@@ -1,0 +1,6 @@
+camera_code,name,department,camera_type,rtsp_url,latitude,longitude,status
+KNP-TRAF-001,Mall Road Junction,Traffic,anpr,rtsp://mediamtx:8554/cam001,26.4670,80.3500,online
+KNP-TRAF-002,Bara Chauraha,Traffic,fixed,rtsp://mediamtx:8554/cam002,26.4720,80.3390,online
+KNP-POL-003,Kotwali Gate,Police,ptz,rtsp://mediamtx:8554/cam003,26.4590,80.3480,online
+KNP-MUN-004,Green Park Stadium,Municipal,fixed,rtsp://mediamtx:8554/cam004,26.4880,80.3210,online
+KNP-TRAF-005,IIT Kanpur Gate,Traffic,anpr,rtsp://mediamtx:8554/cam005,26.5120,80.2330,online

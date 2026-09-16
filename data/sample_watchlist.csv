@@ -1,0 +1,5 @@
+plate_number,reason,severity,notes
+UP78AB1234,stolen,high,Reported stolen 2026-08-11
+DL01CX9988,wanted,high,Linked to open investigation
+MH12KL4567,suspect,medium,Flagged for surveillance
+UP32EF2020,blacklisted,low,Unpaid challans

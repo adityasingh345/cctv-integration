@@ -1,0 +1,78 @@
+services:
+  # ---- PostgreSQL + PostGIS: registry, detections, watchlist, alerts ----
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  # ---- Redis: pub/sub for pushing alerts to the dashboard over WebSocket ----
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # ---- MediaMTX: pulls camera RTSP and republishes as browser-friendly HLS ----
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    ports:
+      - "8554:8554"   # RTSP
+      - "8888:8888"   # HLS (what the frontend video player consumes)
+    volumes:
+      - ./ingestion/mediamtx.yml:/mediamtx.yml:ro
+
+  # ---- Backend API (FastAPI) : registry CRUD, search, watchlist, WS alerts ----
+  backend:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - snapshots:/snapshots
+
+  # ---- Analytics worker : reads frames, runs YOLO + ANPR, writes detections ----
+  analytics:
+    build: ./analytics
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./analytics:/worker
+      - snapshots:/snapshots
+    # GPU (uncomment on a machine with NVIDIA + nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # ---- Frontend (React + Leaflet dashboard) ----
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
+  snapshots:
