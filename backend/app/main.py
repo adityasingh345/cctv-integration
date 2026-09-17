@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import cameras, watchlist
+from .routers import cameras, watchlist, detections
+
 
 app = FastAPI(
     title="CCTV Integration Platform API",
@@ -18,6 +19,7 @@ app.add_middleware(
 
 app.include_router(cameras.router)
 app.include_router(watchlist.router)
+app.include_router(detections.router)
 
 @app.get("/health", tags=["meta"])
 def health():

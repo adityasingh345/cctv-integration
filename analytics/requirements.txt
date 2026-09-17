@@ -5,3 +5,4 @@ numpy==1.26.4
 psycopg2-binary==2.9.9
 redis==5.0.8
 requests==2.32.3
+easyocr==1.7.2              # plate OCR (auto-downloads its recognizer on first run)
