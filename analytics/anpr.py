@@ -45,8 +45,17 @@ class ANPR:
             crop = frame[max(0, y1):y2, max(0, x1):x2]
             if crop.size == 0:
                 continue
-            for (_, text, prob) in self.reader.readtext(crop):
+            # upscale small crops so OCR has more pixels
+            h, w = crop.shape[:2]
+            if max(h, w) < 200:
+                s = 200.0 / max(h, w)
+                crop = cv2.resize(crop, None, fx=s, fy=s, interpolation=cv2.INTER_CUBIC)
+            for (_, text, prob) in self.reader.readtext(
+                crop, allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            ):
+                if prob < 0.45:                 # drop low-confidence junk
+                    continue
                 plate = norm_plate(text)
-                if PLATE_RE.search(plate):
+                if 8 <= len(plate) <= 11 and PLATE_RE.search(plate):
                     found.append((plate, float(prob)))
         return found
