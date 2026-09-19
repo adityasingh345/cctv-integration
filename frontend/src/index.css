@@ -84,3 +84,14 @@ body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; 
 .clear-btn { align-self: flex-end; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; margin-bottom: 6px; }
 .ack-btn { margin-top: 6px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
 .ack-btn:hover { background: #334155; }
+
+/* Live tracking */
+.tracking { font-size: 12px; color: #22c55e; margin-left: 8px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.tracking b { color: #e2e8f0; }
+.track-stop { margin-left: 8px; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 5px; padding: 1px 8px; font-size: 11px; cursor: pointer; }
+.auto-track { font-size: 11px; color: #94a3b8; font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; }
+.alert-actions { display: flex; gap: 6px; margin-top: 6px; }
+.track-btn { background: transparent; border: 1px solid #2563eb; color: #93c5fd; border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.alert.tracked { outline: 2px solid #22c55e; }
+.det-row { cursor: pointer; }
+.det-row:hover { background: #3b4a63; }
