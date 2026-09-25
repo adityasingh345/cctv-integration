@@ -1,0 +1,21 @@
+services:
+  mock_vms_a:
+    build: ./federation/mock_vms_a
+    ports:
+      - "9001:9001"
+
+  mock_vms_b:
+    build: ./federation/mock_vms_b
+    ports:
+      - "9002:9002"
+
+  federation:
+    build: ./federation
+    environment:
+      VMS_A_URL: http://mock_vms_a:9001/events
+      VMS_B_URL: http://mock_vms_b:9002/api/detections
+      BACKEND_URL: http://backend:8000
+      POLL_SEC: "5"
+    depends_on:
+      - mock_vms_a
+      - mock_vms_b

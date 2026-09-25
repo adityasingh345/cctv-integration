@@ -3,7 +3,7 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import cameras, watchlist, detections, alerts, stats
+from .routers import cameras, watchlist, detections, alerts, stats, analytics
 
 from .ws.manager import manager
 
@@ -25,6 +25,7 @@ app.include_router(watchlist.router)
 app.include_router(detections.router)
 app.include_router(alerts.router)
 app.include_router(stats.router)
+app.include_router(analytics.router)
 
 # Bridge: subscribe to Redis "alerts" and fan out to all WebSocket clients.
 @app.on_event("startup")

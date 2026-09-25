@@ -5,8 +5,11 @@ backend as a detection. One thread per camera; a shared lock serialises the
 (GPU/CPU) model calls so a small machine stays stable.
 """
 import os, time, threading, requests, cv2
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 from detector import VehicleDetector
 from anpr import ANPR, norm_plate
+import subprocess, numpy as np
+from urllib.parse import urlparse, unquote
 
 BACKEND      = os.getenv("BACKEND_URL", "http://backend:8000")
 SAMPLE_EVERY = int(os.getenv("FRAME_SAMPLE_EVERY", "5"))   # analyse every Nth frame
@@ -15,10 +18,29 @@ MAX_CAMERAS  = int(os.getenv("MAX_CAMERAS", "10"))         # cap live analysis o
 YOLO_MODEL   = os.getenv("YOLO_MODEL", "yolov8n.pt")
 
 os.makedirs(SNAP_DIR, exist_ok=True)
-os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "-8"   # silence h264/rtsp decoder spam
+
 detector = VehicleDetector(YOLO_MODEL)
 anpr     = ANPR()
 lock     = threading.Lock()      # models are shared -> one inference at a time
+
+def _read_exact(stream, n):
+    buf = b""
+    while len(buf) < n:
+        chunk = stream.read(n - len(buf))
+        if not chunk:
+            return buf        # stream ended
+        buf += chunk
+    return buf
+
+def build_capture(raw_url):
+    p = urlparse(raw_url)
+    user = unquote(p.username or "")   # decode %40 -> @
+    pwd  = unquote(p.password or "")
+    host = p.hostname or ""
+    port = f":{p.port}" if p.port else ""
+    # FFmpeg accepts credentials before host; the decoded '@' in the email is
+    # fine because FFmpeg splits on the LAST '@' before the host.
+    return f"rtsp://{user}:{pwd}@{host}{port}{p.path}"
 
 def get_cameras():
     """Wait for the backend + registry, then return the camera list."""
@@ -53,23 +75,36 @@ def process_camera(cam):
         n += 1
         if n % SAMPLE_EVERY:
             continue
+
         with lock:
-            vehicles = detector.detect(frame)
-            plates   = anpr.read_plates(frame)
-        if not plates:
-            continue
-        ts = int(time.time() * 1000)
-        snap = f"{SNAP_DIR}/{code}_{ts}.jpg"
-        cv2.imwrite(snap, frame)
+            vehicles = detector.detect(frame)      # [(box, type, conf), ...]
+            plates   = anpr.read_plates(frame)      # [(plate, conf), ...] may be empty
+
+        # 1. Log every vehicle with its TYPE (works even if plate unreadable)
+        for (box, vtype, vconf) in vehicles:
+            post_detection({
+                "camera_id": cid,
+                "plate_number": None,             # no plate needed for metadata
+                "object_type": vtype,             # car / truck / bus / motorcycle
+                "confidence": round(vconf, 3),
+                "snapshot_path": None,
+            })
+
+        # 2. If any plate WAS readable, log it too (bonus when quality allows)
         for plate, prob in plates:
             post_detection({
                 "camera_id": cid,
                 "plate_number": plate,
                 "object_type": "vehicle",
                 "confidence": round(prob, 3),
-                "snapshot_path": snap,
+                "snapshot_path": None,
             })
-            print(f"[worker] {code}: plate {plate} ({prob:.2f})")
+
+        if vehicles:
+            counts = {}
+            for (_, vt, _) in vehicles:
+                counts[vt] = counts.get(vt, 0) + 1
+            print(f"[worker] {code}: {counts}" + (f" | plates: {[p for p,_ in plates]}" if plates else ""))
 
 def main():
     cams = get_cameras()[:MAX_CAMERAS]

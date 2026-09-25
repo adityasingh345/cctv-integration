@@ -1,0 +1,6 @@
+camera_code,name,department,camera_type,rtsp_url,latitude,longitude,status
+SENT-cam01,Sentinel cam01,Live,anpr,rtsp://mediamtx:8554/cam01,26.463299,80.325638,online
+SENT-cam02,Sentinel cam02,Live,anpr,rtsp://mediamtx:8554/cam02,26.424493,80.329782,online
+SENT-cam03,Sentinel cam03,Live,anpr,rtsp://mediamtx:8554/cam03,26.422435,80.311624,online
+SENT-cam04,Sentinel cam04,Live,anpr,rtsp://mediamtx:8554/cam04,26.424393,80.302161,online
+SENT-cam05,Sentinel cam05,Live,anpr,rtsp://mediamtx:8554/cam05,26.45223,80.330229,online

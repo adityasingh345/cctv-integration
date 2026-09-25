@@ -1,19 +1,11 @@
-# MediaMTX: receives camera RTSP (published by the simulator or real cameras)
-# and republishes each stream as HLS so the browser dashboard can play it.
 logLevel: info
-
-# --- RTSP server: cameras / simulator PUBLISH here, analytics READS here ---
 rtsp: yes
 rtspAddress: :8554
-
-# --- HLS server: the React video player CONSUMES this ---
 hls: yes
 hlsAddress: :8888
-hlsAlwaysRemux: yes          # keep HLS alive even with no viewer (analytics needs it steady)
+hlsAlwaysRemux: yes
 hlsVariant: mpegts
 hlsSegmentCount: 7
-hlsSegmentDuration: 1s       # low latency-ish for a live demo
-
-# Any path (cam001, cam002, ...) is created on demand when something publishes to it.
+hlsSegmentDuration: 1s
 paths:
   all_others:
