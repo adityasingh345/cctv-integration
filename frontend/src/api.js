@@ -45,3 +45,6 @@ export async function getPlates(limit = 30) {
   const all = await (await fetch(`${API}/detections?limit=500`)).json();
   return all.filter(d => d.plate_number).slice(0, limit);
 }
+export async function getAlertHistory(limit = 200) {
+  return (await fetch(`${API}/alerts?limit=${limit}`)).json();
+}
