@@ -2,10 +2,13 @@
 import re, difflib
 from .models import Watchlist
 
+import os
+MATCH_THRESHOLD = float(os.getenv("MATCH_THRESHOLD", "0.82"))
+
 def norm_plate(s):
     return re.sub(r"[^A-Z0-9]", "", (s or "").upper())
 
-def find_match(plate, db, threshold=0.82):
+def find_match(plate, db, threshold=MATCH_THRESHOLD):
     """
     Return (watchlist_entry, score) for the best match >= threshold, else None.
     Uses similarity ratio so 'MD7078644' still matches watchlist 'MH7078644'.

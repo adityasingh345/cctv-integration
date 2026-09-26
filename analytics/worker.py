@@ -23,6 +23,23 @@ detector = VehicleDetector(YOLO_MODEL)
 anpr     = ANPR()
 lock     = threading.Lock()      # models are shared -> one inference at a time
 
+DEDUPE_WINDOW = int(os.getenv("DEDUPE_WINDOW", "3"))   # seconds; don't repeat same (cam,type,plate)
+_last_seen = {}   # (camera_id, object_type, plate) -> last timestamp
+_seen_lock = threading.Lock()
+
+def should_log(camera_id, object_type, plate):
+    key = (camera_id, object_type, plate or "")
+    now = time.time()
+    with _seen_lock:
+        last = _last_seen.get(key)
+        _last_seen[key] = now
+        # occasional cleanup so the dict doesn't grow forever
+        if len(_last_seen) > 2000:
+            for k, t in list(_last_seen.items()):
+                if now - t > DEDUPE_WINDOW * 10:
+                    _last_seen.pop(k, None)
+    return last is None or (now - last) > DEDUPE_WINDOW
+
 def _read_exact(stream, n):
     buf = b""
     while len(buf) < n:
@@ -68,43 +85,38 @@ def process_camera(cam):
     cap = cv2.VideoCapture(url)
     n = 0
     while True:
-        ok, frame = cap.read()
-        if not ok:
-            print(f"[worker] {code}: stream drop, reconnecting...")
-            cap.release(); time.sleep(2); cap = cv2.VideoCapture(url); continue
-        n += 1
-        if n % SAMPLE_EVERY:
+        try:
+            ok, frame = cap.read()
+            if not ok:
+                print(f"[worker] {code}: stream drop, reconnecting...")
+                cap.release(); time.sleep(2); cap = cv2.VideoCapture(url); continue
+            n += 1
+            if n % SAMPLE_EVERY:
+                continue
+
+            with lock:
+                vehicles = detector.detect(frame)
+                plates   = anpr.read_plates(frame)
+
+            for (box, vtype, vconf) in vehicles:
+                if should_log(cid, vtype, None):
+                    post_detection({
+                        "camera_id": cid, "plate_number": None,
+                        "object_type": vtype, "confidence": round(vconf, 3),
+                        "snapshot_path": None,
+                    })
+            for plate, prob in plates:
+                if should_log(cid, "vehicle", plate):
+                    post_detection({
+                        "camera_id": cid, "plate_number": plate,
+                        "object_type": "vehicle", "confidence": round(prob, 3),
+                        "snapshot_path": None,
+                    })
+
+        except Exception as e:
+            print(f"[worker] {code}: frame error ({e}); skipping frame")
+            time.sleep(0.5)
             continue
-
-        with lock:
-            vehicles = detector.detect(frame)      # [(box, type, conf), ...]
-            plates   = anpr.read_plates(frame)      # [(plate, conf), ...] may be empty
-
-        # 1. Log every vehicle with its TYPE (works even if plate unreadable)
-        for (box, vtype, vconf) in vehicles:
-            post_detection({
-                "camera_id": cid,
-                "plate_number": None,             # no plate needed for metadata
-                "object_type": vtype,             # car / truck / bus / motorcycle
-                "confidence": round(vconf, 3),
-                "snapshot_path": None,
-            })
-
-        # 2. If any plate WAS readable, log it too (bonus when quality allows)
-        for plate, prob in plates:
-            post_detection({
-                "camera_id": cid,
-                "plate_number": plate,
-                "object_type": "vehicle",
-                "confidence": round(prob, 3),
-                "snapshot_path": None,
-            })
-
-        if vehicles:
-            counts = {}
-            for (_, vt, _) in vehicles:
-                counts[vt] = counts.get(vt, 0) + 1
-            print(f"[worker] {code}: {counts}" + (f" | plates: {[p for p,_ in plates]}" if plates else ""))
 
 def main():
     cams = get_cameras()[:MAX_CAMERAS]
